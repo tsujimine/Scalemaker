@@ -1,0 +1,11 @@
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; }
+header { background: #1a1a1a; color: white; padding: 2rem; text-align: center; }
+main { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+.controls { display: flex; gap: 20px; background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.control-group { display: flex; flex-direction: column; gap: 5px; }
+select { padding: 8px; font-size: 1rem; border-radius: 4px; border: 1px solid #ccc; }
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #333; color: white; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+.notes { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #e63946; font-size: 1.1rem; }
+tr:hover { background-color: #f8f9fa; }
