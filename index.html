@@ -3,31 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sonata Composer Studio [Multi-Scale Converter]</title>
+    <title>Sonata Composer Studio [Complete Suite]</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; line-height: 1.6; }
         header { background: #1a1a1a; color: white; padding: 1rem; text-align: center; }
         h1 { margin: 0; font-size: 1.5rem; letter-spacing: 2px; }
         main { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem; }
         .section-box { background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { font-size: 1.1rem; border-left: 4px solid #e63946; padding-left: 10px; margin-bottom: 15px; }
+        h2 { font-size: 1.1rem; border-left: 4px solid #e63946; padding-left: 10px; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 変換入力エリア */
-        .converter-area { background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-        .converter-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-bottom: 10px; }
-        .converter-input { text-align: center; }
-        .converter-input label { display: block; font-size: 0.7rem; color: #666; margin-bottom: 5px; }
-        .converter-input select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; background: #fff; cursor: pointer; }
+        /* プロジェクト管理 */
+        .project-manager { display: flex; gap: 10px; align-items: center; background: #333; color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+        .project-btn { background: #555; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.8rem; }
         
-        /* テーブル表示 */
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        th { background: #333; color: white; padding: 12px; text-align: left; font-size: 0.8rem; }
-        td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        /* 変換エリア */
+        .converter-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-bottom: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .converter-input select { width: 100%; padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
+
+        /* 構成プランナー */
+        .timeline-header { display: grid; grid-template-columns: 80px 80px 150px 180px 1fr 80px 40px; gap: 10px; padding: 10px; font-weight: bold; font-size: 0.8rem; border-bottom: 2px solid #eee; }
+        .timeline-item { display: grid; grid-template-columns: 80px 80px 150px 180px 1fr 80px 40px; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-top: 5px; }
+        .timeline-item input, .timeline-item select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+        .total-info { background: #e63946; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; display: inline-block; margin-top: 10px; }
         
-        .converted-notes { font-family: 'Courier New', monospace; font-weight: bold; color: #2a9d8f; font-size: 1.2rem; letter-spacing: 2px; }
-        .original-notes { font-family: 'Courier New', monospace; color: #999; font-size: 0.85rem; }
-        tr:hover { background-color: #fff9f9; }
-        .highlight-row { background-color: #f0fdf4; }
+        /* テーブル */
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; font-size: 0.85rem; }
+        th { background: #333; color: white; padding: 10px; text-align: left; }
+        td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+        .notes-text { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1rem; }
+        .converted-cell { color: #2a9d8f; font-size: 1.1rem; }
+        .chord-notes { color: #e63946; }
+        .add-btn { background: #2a9d8f; color: white; padding: 8px 15px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:10px; }
     </style>
 </head>
 <body>
@@ -35,24 +41,45 @@
 <header><h1>🎼 Sonata Composer Studio</h1></header>
 
 <main>
-    <div class="section-box">
-        <h2>メロディ一括変換 (Major 度数 → 全スケール)</h2>
-        <div class="converter-area">
-            <div class="converter-grid" id="inputGrid">
-                </div>
-            <div style="display: flex; gap: 20px; align-items: center; margin-top: 15px;">
-                <label>Root Key: <select id="keySelect" onchange="update()"></select></label>
-                <span style="font-size: 0.8rem; color: #666;">※1=Do, 2=Re... の度数を選び、下の表で全旋法での響きを確認してください。</span>
-            </div>
-        </div>
+    <div class="project-manager">
+        <label>📁 曲を選択:</label>
+        <select id="projectList" onchange="switchProject()"></select>
+        <button class="project-btn" onclick="createNewProject()">＋ 新規作成</button>
+        <button class="project-btn" onclick="renameProject()">✏️ 名前変更</button>
+        <div id="saveStatus" style="margin-left:auto; font-size:0.8rem; color:#2a9d8f;">自動保存中</div>
+    </div>
 
+    <div class="section-box">
+        <h2>メロディ一括変換 (Major度数 → 全旋法)</h2>
+        <div class="converter-grid" id="inputGrid"></div>
+    </div>
+
+    <div class="section-box">
+        <h2>楽曲構成 & 演奏時間設計</h2>
+        <div class="timeline-header">
+            <div>小節数</div><div>BPM</div><div>セクション</div><div>スケール</div><div>メモ</div><div>時間</div><div></div>
+        </div>
+        <div id="timeline"></div>
+        <button class="add-btn" onclick="addTimelineRow(); saveToLocal();">＋ セクションを追加</button>
+        <br>
+        <div id="totalDisplay" class="total-info">総演奏時間: 0分 0秒</div>
+    </div>
+
+    <div class="section-box">
+        <h2>スケール・リファレンス (全旋法)</h2>
+        <div style="margin-bottom:15px; display:flex; gap:20px; align-items:center;">
+            <label>Root Key: <select id="keySelect" onchange="update()"></select></label>
+            <span style="font-size: 0.8rem; color: #666;">※緑=変換メロディ / 赤=3度構成順</span>
+        </div>
+        <div id="checkboxContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;"></div>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 150px;">スケール名</th>
-                    <th style="width: 300px;">変換後のメロディ</th>
-                    <th>元の構成音 (参考)</th>
-                    <th style="width: 150px;">イメージ</th>
+                    <th style="width:120px;">スケール名</th>
+                    <th>変換メロディ</th>
+                    <th>音階順 (Scale)</th>
+                    <th>3度順 (Chord)</th>
+                    <th>地域/イメージ</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -65,83 +92,116 @@
     const notesFlat  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
     function n(name) { const idx = notesFlat.indexOf(name); return idx !== -1 ? idx : notesSharp.indexOf(name); }
 
-    // 全31種類のスケール（一部抜粋して定義。実際はすべて保持）
     const scales = [
-        { id: "ryukyu", name: "琉球音階", notes: ["C", "E", "F", "G", "B"], img: "太陽", pref: "sharp" },
-        { id: "ritsu", name: "律旋法", notes: ["C", "D", "F", "G", "A"], img: "静謐", pref: "sharp" },
-        { id: "in", name: "陰旋法", notes: ["C", "Db", "F", "G", "Ab"], img: "哀愁", pref: "flat" },
-        { id: "whole", name: "全音音階", notes: ["C", "D", "E", "Gb", "Ab", "Bb"], img: "夢幻", pref: "sharp" },
-        { id: "mystic", name: "神秘音階", notes: ["C", "D", "E", "Gb", "A", "Bb"], img: "法悦", pref: "sharp" },
-        { id: "lydian", name: "リディアン", notes: ["C", "D", "E", "F#", "G", "A", "B"], img: "浮遊", pref: "sharp" },
-        { id: "phrygian", name: "フリジアン", notes: ["C", "Db", "Eb", "F", "G", "Ab", "Bb"], img: "宿命", pref: "flat" },
-        { id: "messiaen2", name: "半全ディミニッシュ", notes: ["C", "Db", "Eb", "E", "Gb", "G", "A", "Bb"], img: "宝石", pref: "flat" },
-        { id: "dim_wh", name: "全半ディミニッシュ", notes: ["C", "D", "Eb", "F", "Gb", "Ab", "A", "B"], img: "硬質", pref: "sharp" },
-        { id: "messiaen3", name: "メシアン第3", notes: ["C", "D", "Eb", "E", "F#", "G", "Ab", "Bb", "B"], img: "爆発", pref: "sharp" },
-        { id: "messiaen7", name: "メシアン第7", notes: ["C", "Db", "D", "Eb", "F", "Gb", "G", "Ab", "A", "B"], img: "カオス", pref: "sharp" },
-        { id: "spiral", name: "螺旋音階", notes: ["C", "D", "E", "Gb", "Ab", "Bb", "C#", "D#", "F", "G", "A", "B"], img: "無限", pref: "sharp" }
-        // ...必要に応じて追加
+        { id: "ryukyu", n: 5, name: "琉球音階", notes: ["C", "E", "F", "G", "B"], region: "沖縄", img: "太陽", pref: "sharp" },
+        { id: "ritsu", n: 5, name: "律旋法", notes: ["C", "D", "F", "G", "A"], region: "雅楽", img: "静謐", pref: "sharp" },
+        { id: "in", n: 5, name: "陰旋法", notes: ["C", "Db", "F", "G", "Ab"], region: "都節", img: "哀愁", pref: "flat" },
+        { id: "china", n: 5, name: "中国音階", notes: ["C", "D", "F", "G", "A"], region: "中国", img: "悠久", pref: "sharp" },
+        { id: "whole", n: 6, name: "全音音階", notes: ["C", "D", "E", "Gb", "Ab", "Bb"], region: "仏", img: "夢幻", pref: "sharp" },
+        { id: "mystic", n: 6, name: "神秘音階", notes: ["C", "D", "E", "Gb", "A", "Bb"], region: "露", img: "法悦", pref: "sharp" },
+        { id: "ionian", n: 7, name: "アイオニアン", notes: ["C", "D", "E", "F", "G", "A", "B"], region: "欧州", img: "現実", pref: "sharp" },
+        { id: "lydian", n: 7, name: "リディアン", notes: ["C", "D", "E", "F#", "G", "A", "B"], region: "欧州", img: "浮遊", pref: "sharp" },
+        { id: "phrygian_dom", n: 7, name: "フリジアンDom", notes: ["C", "Db", "E", "F", "G", "Ab", "Bb"], region: "中東", img: "威圧", pref: "flat" },
+        { id: "dim_hw", n: 8, name: "半全ディミニッシュ", notes: ["C", "Db", "Eb", "E", "Gb", "G", "A", "Bb"], region: "現代", img: "宝石", pref: "flat" },
+        { id: "dim_wh", n: 8, name: "全半ディミニッシュ", notes: ["C", "D", "Eb", "F", "Gb", "Ab", "A", "B"], region: "現代", img: "硬質", pref: "sharp" },
+        { id: "messiaen3", n: 9, name: "メシアン第3", notes: ["C", "D", "Eb", "E", "F#", "G", "Ab", "Bb", "B"], region: "現代", img: "爆発", pref: "sharp" },
+        { id: "messiaen7", n: 10, name: "メシアン第7", notes: ["C", "Db", "D", "Eb", "F", "Gb", "G", "Ab", "A", "B"], region: "現代", img: "カオス", pref: "sharp" },
+        { id: "spiral", n: "螺旋", name: "螺旋音階", notes: ["C", "D", "E", "Gb", "Ab", "Bb", "C#", "D#", "F", "G", "A", "B"], region: "数学", img: "無限", pref: "sharp" }
     ];
 
-    // 入力枠生成
+    let currentProjectName = "My Sonata";
+    let allProjects = { "My Sonata": [] };
+
+    // 変換入力枠生成
     const inputGrid = document.getElementById('inputGrid');
     for(let i=1; i<=8; i++) {
-        inputGrid.innerHTML += `
-            <div class="converter-input">
-                <label>${i}音目</label>
-                <select class="deg-in" onchange="update()">
-                    <option value="-1">-</option>
-                    <option value="0" ${i===1?'selected':''}>1 (Do)</option>
-                    <option value="1">2 (Re)</option>
-                    <option value="2" ${i===2?'selected':''}>3 (Mi)</option>
-                    <option value="3">4 (Fa)</option>
-                    <option value="4" ${i===3?'selected':''}>5 (So)</option>
-                    <option value="5">6 (La)</option>
-                    <option value="6">7 (Si)</option>
-                    <option value="7">8 (oct)</option>
-                </select>
-            </div>`;
+        inputGrid.innerHTML += `<div class="converter-input"><select class="deg-in" onchange="update()"><option value="-1">-</option><option value="0" ${i===1?'selected':''}>1</option><option value="1">2</option><option value="2" ${i===2?'selected':''}>3</option><option value="3">4</option><option value="4" ${i===3?'selected':''}>5</option><option value="5">6</option><option value="6">7</option><option value="7">8</option></select></div>`;
     }
 
-    // セレクター初期化
+    function calculateTotal() {
+        let totalSec = 0;
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            const bars = parseFloat(item.querySelector('.input-bars').value) || 0;
+            const bpm = parseFloat(item.querySelector('.input-bpm').value) || 120;
+            const sec = (bars * 4) * (60 / bpm);
+            item.querySelector('.duration-cell').innerText = Math.round(sec) + "s";
+            totalSec += sec;
+        });
+        const m = Math.floor(totalSec / 60); const s = Math.round(totalSec % 60);
+        document.getElementById('totalDisplay').innerText = `総演奏時間: ${m}分 ${s}秒`;
+    }
+
+    function saveToLocal() {
+        const data = [];
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            data.push({ bars: item.querySelector('.input-bars').value, bpm: item.querySelector('.input-bpm').value, secName: item.querySelector('.input-sec').value, scale: item.querySelector('.select-scale').value, memo: item.querySelector('.input-memo').value });
+        });
+        allProjects[currentProjectName] = data;
+        localStorage.setItem('sonataFullData', JSON.stringify(allProjects));
+        localStorage.setItem('lastProj', currentProjectName);
+        document.getElementById('saveStatus').innerText = "保存済み " + new Date().toLocaleTimeString();
+    }
+
+    function addTimelineRow(bars="32", bpm="120", secName="", scaleName="琉球音階", memo="") {
+        const container = document.getElementById('timeline');
+        const div = document.createElement('div');
+        div.className = 'timeline-item';
+        div.innerHTML = `<input type="number" class="input-bars" value="${bars}" oninput="calculateTotal(); saveToLocal();"> <input type="number" class="input-bpm" value="${bpm}" oninput="calculateTotal(); saveToLocal();"> <input type="text" class="input-sec" value="${secName}" oninput="saveToLocal();"> <select class="select-scale" onchange="saveToLocal();">${scales.map(s => `<option ${s.name===scaleName?'selected':''}>${s.name}</option>`).join('')}</select> <input type="text" class="input-memo" value="${memo}" oninput="saveToLocal();"> <div class="duration-cell">0s</div> <button class="del-btn" onclick="this.parentElement.remove(); calculateTotal(); saveToLocal();">×</button>`;
+        container.appendChild(div); calculateTotal();
+    }
+
+    function switchProject() {
+        currentProjectName = document.getElementById('projectList').value;
+        document.getElementById('timeline').innerHTML = "";
+        const data = allProjects[currentProjectName];
+        if (data && data.length > 0) data.forEach(d => addTimelineRow(d.bars, d.bpm, d.secName, d.scale, d.memo));
+        else addTimelineRow("64", "120", "提示部", "琉球音階", "");
+        calculateTotal();
+    }
+
+    function createNewProject() {
+        const name = prompt("新しい曲名:");
+        if (name && !allProjects[name]) { allProjects[name] = []; currentProjectName = name; renderProjectList(); switchProject(); saveToLocal(); }
+    }
+
+    function renderProjectList() {
+        const list = document.getElementById('projectList'); list.innerHTML = "";
+        Object.keys(allProjects).forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; if (name === currentProjectName) opt.selected = true; list.appendChild(opt); });
+    }
+
     const keySelect = document.getElementById('keySelect');
-    notesFlat.forEach((n, i) => {
-        const opt = document.createElement('option');
-        opt.value = i; opt.textContent = n;
-        keySelect.appendChild(opt);
-    });
+    notesFlat.forEach((n, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = n; keySelect.appendChild(opt); });
+    const checkboxContainer = document.getElementById('checkboxContainer');
+    scales.forEach(s => { checkboxContainer.innerHTML += `<label style="font-size:0.7rem; background:#eee; padding:2px 8px; border-radius:10px; cursor:pointer;"><input type="checkbox" id="check_${s.id}" checked onchange="update()"> ${s.name}</label>`; });
 
     function update() {
         const shift = parseInt(keySelect.value);
         const tbody = document.getElementById('tableBody');
         const degInputs = Array.from(document.querySelectorAll('.deg-in')).map(s => parseInt(s.value));
-        const isFlatRoot = [1, 3, 5, 8, 10].includes(shift);
-        
+        const isFlat = [1, 3, 5, 8, 10].includes(shift);
         tbody.innerHTML = "";
 
         scales.forEach(s => {
-            const noteList = (s.pref === "flat") || (isFlatRoot && s.pref !== "sharp") ? notesFlat : notesSharp;
+            if (!document.getElementById(`check_${s.id}`).checked) return;
+            const noteList = (s.pref === "flat") || (isFlat && s.pref !== "sharp") ? notesFlat : notesSharp;
             const intervals = s.notes.map(name => n(name));
             
-            // 選択された度数をそのスケールの音に変換
-            const converted = degInputs
-                .filter(v => v !== -1)
-                .map(v => noteList[(intervals[v % intervals.length] + shift) % 12])
-                .join(" ");
+            const converted = degInputs.filter(v => v !== -1).map(v => noteList[(intervals[v % intervals.length] + shift) % 12]).join(" ");
+            const scaleNotes = intervals.map(i => noteList[(i + shift) % 12]).join(" ");
+            let tertial = []; let temp = [...intervals]; let i = 0;
+            while (temp.length > 0) { tertial.push(temp[i]); temp.splice(i, 1); if (temp.length > 0) i = (i + 1) % temp.length; }
+            const chordNotes = tertial.map(i => noteList[(i + shift) % 12]).join(" ");
 
-            // 参考用に元のスケール構成音も表示
-            const baseScale = intervals.map(i => noteList[(i + shift) % 12]).join(" ");
-
-            tbody.innerHTML += `
-                <tr>
-                    <td style="font-weight:bold;">${s.name}</td>
-                    <td class="converted-notes">${converted || "---"}</td>
-                    <td class="original-notes">${baseScale}</td>
-                    <td><span style="font-size:0.7rem;">${s.img}</span></td>
-                </tr>`;
+            tbody.innerHTML += `<tr><td style="font-weight:bold;">${s.name}</td><td class="notes-text converted-cell">${converted}</td><td class="notes-text">${scaleNotes}</td><td class="notes-text chord-notes">${chordNotes}</td><td>${s.img}</td></tr>`;
         });
     }
 
-    update();
+    window.onload = () => {
+        const saved = localStorage.getItem('sonataFullData');
+        const last = localStorage.getItem('lastProj');
+        if (saved) { allProjects = JSON.parse(saved); if (last) currentProjectName = last; }
+        renderProjectList(); switchProject(); update();
+    };
 </script>
 </body>
 </html>
