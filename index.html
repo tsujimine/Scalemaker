@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sonata Composer Studio [Theoretical Version]</title>
+    <title>Sonata Composer Studio [Analysis Mode]</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; line-height: 1.6; }
         header { background: #1a1a1a; color: white; padding: 1rem; text-align: center; }
@@ -16,7 +16,7 @@
         .project-manager { display: flex; gap: 10px; align-items: center; background: #333; color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
         .project-btn { background: #555; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.8rem; }
         
-        /* 楽曲構成プランナー */
+        /* 構成プランナー */
         .timeline-header { display: grid; grid-template-columns: 80px 80px 150px 180px 1fr 80px 40px; gap: 10px; padding: 10px; font-weight: bold; font-size: 0.8rem; border-bottom: 2px solid #eee; }
         .timeline-item { display: grid; grid-template-columns: 80px 80px 150px 180px 1fr 80px 40px; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-top: 5px; }
         .timeline-item input, .timeline-item select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; width: 100%; }
@@ -33,8 +33,10 @@
         td { padding: 8px 10px; border-bottom: 1px solid #eee; }
         .notes-text { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1rem; }
         
+        /* 色・マークの指定 */
         .in-scale { color: #2a9d8f; } 
         .out-scale { color: #f4a261; font-weight: normal; opacity: 0.7; } 
+        .group-mark { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: #eee; color: #333; font-weight: bold; font-size: 0.75rem; margin-right: 8px; vertical-align: middle; border: 1px solid #ccc; }
         .chord-notes { color: #e63946; } 
         .add-btn { background: #2a9d8f; color: white; padding: 8px 15px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:10px; }
         .del-btn { background: #ccc; color: white; border:none; border-radius:4px; cursor:pointer; height: 30px; }
@@ -55,9 +57,6 @@
 
     <div class="section-box">
         <h2>楽曲構成 & 演奏時間設計</h2>
-        <div class="timeline-header">
-            <div>小節数</div><div>BPM</div><div>セクション</div><div>スケール</div><div>メモ</div><div>時間</div><div></div>
-        </div>
         <div id="timeline"></div>
         <button class="add-btn" onclick="addTimelineRow(); saveToLocal();">＋ セクションを追加</button>
         <br>
@@ -65,24 +64,24 @@
     </div>
 
     <div class="section-box">
-        <h2>メロディ変換 (理論的度数反映: E=3, F=4)</h2>
+        <h2>メロディ変換 & 共通旋法分析</h2>
+        <p style="font-size: 0.75rem; color: #666; margin-bottom: 10px;">※変換後の音が全く同じものにはⒶⒷ...の共通マークがつきます。</p>
         <div class="converter-grid" id="inputGrid"></div>
-        <p style="font-size: 0.75rem; color: #666;">※Cメジャースケールを基準にします。琉球音階の場合、E(3音目)・F(4音目)として正しく変換されます。</p>
     </div>
 
     <div class="section-box">
-        <h2>スケール・リファレンス (全31旋法)</h2>
-        <div style="margin-bottom:15px; display:flex; gap:20px; align-items:center;">
+        <h2>旋法マトリックス</h2>
+        <div style="margin-bottom:15px;">
             <label>Root Key: <select id="keySelect" onchange="update()"></select></label>
         </div>
         <table>
             <thead>
                 <tr>
-                    <th style="width:140px;">スケール名</th>
-                    <th>変換メロディ</th>
-                    <th>音階順 (Scale)</th>
-                    <th>3度順 (Chord)</th>
-                    <th>地域/イメージ</th>
+                    <th style="width:180px;">スケール名</th>
+                    <th style="width:350px;">変換後のメロディ</th>
+                    <th>音階順</th>
+                    <th>3度順</th>
+                    <th style="width:120px;">イメージ</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -94,25 +93,23 @@
     const notesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const notesFlat  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
     const majorScaleNotes = ["C", "D", "E", "F", "G", "A", "B", "C(oct)"];
-    
-    // スケール定義（インデックス指定による理論的厳密化）
-    // 琉球音階 [0=C, 4=E, 5=F, 7=G, 11=B] = 度数 1, 3, 4, 5, 7
+    function n(name) { const idx = notesFlat.indexOf(name); return idx !== -1 ? idx : notesSharp.indexOf(name); }
+
     const scales = [
-        { id: "ryukyu", name: "琉球音階", intervals: [0, null, 4, 5, 7, null, 11], img: "沖縄/太陽", pref: "sharp" },
+        { id: "ryukyu", name: "琉球音階", intervals: [0, null, 4, 5, 7, null, 11], img: "太陽", pref: "sharp" },
         { id: "ritsu", name: "律旋法", intervals: [0, 2, null, 5, 7, 9, null], img: "雅楽", pref: "sharp" },
-        { id: "in", name: "陰旋法", intervals: [0, 1, null, 5, 7, 8, null], img: "都節", pref: "flat" },
-        { id: "china", name: "中国音階", intervals: [0, 2, 4, null, 7, 9, null], img: "中国/悠久", pref: "sharp" },
-        { id: "whole", name: "全音音階", intervals: [0, 2, 4, 6, 8, 10, null], img: "仏/夢幻", pref: "sharp" },
-        { id: "mystic", name: "神秘音階", intervals: [0, 2, 4, 6, 9, 10, null], img: "露/法悦", pref: "sharp" },
+        { id: "in", name: "陰旋法", intervals: [0, 1, null, 5, 7, 8, null], img: "哀愁", pref: "flat" },
+        { id: "china", name: "中国音階", intervals: [0, 2, 4, null, 7, 9, null], img: "悠久", pref: "sharp" },
+        { id: "whole", name: "全音音階", intervals: [0, 2, 4, 6, 8, 10, null], img: "夢幻", pref: "sharp" },
+        { id: "mystic", name: "神秘音階", intervals: [0, 2, 4, 6, 9, 10, null], img: "法悦", pref: "sharp" },
         { id: "ionian", name: "アイオニアン", intervals: [0, 2, 4, 5, 7, 9, 11], img: "長音階", pref: "sharp" },
-        { id: "lydian", name: "リディアン", intervals: [0, 2, 4, 6, 7, 9, 11], img: "欧州/浮遊", pref: "sharp" },
+        { id: "lydian", name: "リディアン", intervals: [0, 2, 4, 6, 7, 9, 11], img: "浮遊感", pref: "sharp" },
         { id: "mixo", name: "ミクソリディアン", intervals: [0, 2, 4, 5, 7, 9, 10], img: "祝祭", pref: "flat" },
         { id: "dorian", name: "ドリアン", intervals: [0, 2, 3, 5, 7, 9, 10], img: "気高い", pref: "flat" },
         { id: "phrygian", name: "フリジアン", intervals: [0, 1, 3, 5, 7, 8, 10], img: "宿命", pref: "flat" },
-        { id: "phrygian_dom", name: "フリジアンDom", intervals: [0, 1, 4, 5, 7, 8, 10], img: "エジプト", pref: "flat" },
-        { id: "dim_hw", name: "半全ディミ", intervals: [0, 1, 3, 4, 6, 7, 9, 10], img: "メシアン2", pref: "flat" },
-        { id: "dim_wh", name: "全半ディミ", intervals: [0, 2, 3, 5, 6, 8, 9, 11], img: "現代/硬質", pref: "sharp" },
-        { id: "messiaen3", name: "メシアン第3", intervals: [0, 2, 3, 4, 6, 7, 8, 10, 11], img: "色彩", pref: "sharp" },
+        { id: "phrygian_dom", name: "フリジアンDom", intervals: [0, 1, 4, 5, 7, 8, 10], img: "威圧", pref: "flat" },
+        { id: "dim_hw", name: "半全ディミ", intervals: [0, 1, 3, 4, 6, 7, 9, 10], img: "宝石", pref: "flat" },
+        { id: "dim_wh", name: "全半ディミ", intervals: [0, 2, 3, 5, 6, 8, 9, 11], img: "硬質", pref: "sharp" },
         { id: "messiaen7", name: "メシアン第7", intervals: [0, 1, 2, 3, 5, 6, 7, 8, 9, 11], img: "カオス", pref: "sharp" },
         { id: "spiral", name: "螺旋音階", intervals: [0, 2, 4, 6, 8, 10, 13, 15, 17, 19, 21, 23], img: "無限", pref: "sharp" }
     ];
@@ -122,7 +119,7 @@
 
     const inputGrid = document.getElementById('inputGrid');
     for(let i=1; i<=8; i++) {
-        inputGrid.innerHTML += `<div class="converter-input"><label>${i}音目</label><select class="deg-in" onchange="update()"><option value="-1">-</option>${majorScaleNotes.map((name,idx)=>`<option value="${idx}">${name}</option>`).join('')}</select></div>`;
+        inputGrid.innerHTML += `<div class="converter-input"><label>${i}</label><select class="deg-in" onchange="update()"><option value="-1">-</option>${majorScaleNotes.map((name,idx)=>`<option value="${idx}">${name}</option>`).join('')}</select></div>`;
     }
 
     function calculateTotal() {
@@ -144,8 +141,7 @@
             data.push({ bars: item.querySelector('.input-bars').value, bpm: item.querySelector('.input-bpm').value, secName: item.querySelector('.input-sec').value, scale: item.querySelector('.select-scale').value, memo: item.querySelector('.input-memo').value });
         });
         allProjects[currentProjectName] = data;
-        localStorage.setItem('sonataCompleteV2', JSON.stringify(allProjects));
-        localStorage.setItem('lastProjV2', currentProjectName);
+        localStorage.setItem('sonataCompleteV3', JSON.stringify(allProjects));
         document.getElementById('saveStatus').innerText = "保存済み " + new Date().toLocaleTimeString();
     }
 
@@ -166,11 +162,6 @@
         calculateTotal();
     }
 
-    function createNewProject() {
-        const name = prompt("新しい曲名:");
-        if (name && !allProjects[name]) { allProjects[name] = []; currentProjectName = name; renderProjectList(); switchProject(); saveToLocal(); }
-    }
-
     const keySelect = document.getElementById('keySelect');
     notesFlat.forEach((n, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = n; keySelect.appendChild(opt); });
 
@@ -179,41 +170,74 @@
         const tbody = document.getElementById('tableBody');
         const degInputs = Array.from(document.querySelectorAll('.deg-in')).map(s => parseInt(s.value));
         const isFlat = [1, 3, 5, 8, 10].includes(shift);
-        tbody.innerHTML = "";
+        
+        // 共通メロディ分析用
+        const resultsMap = {}; // { "C E G": [scaleID, ...] }
+        const scaleCalculations = [];
 
         scales.forEach(s => {
             const noteList = (s.pref === "flat") || (isFlat && s.pref !== "sharp") ? notesFlat : notesSharp;
-            const validIntervals = s.intervals.filter(v => v !== null);
+            
+            // 変換メロディ計算
+            const convertedRaw = degInputs.filter(v => v !== -1).map(v => {
+                const targetInterval = s.intervals[v % s.intervals.length];
+                const finalIdx = targetInterval === null ? ([0, 2, 4, 5, 7, 9, 11][v % 7]) : targetInterval;
+                return noteList[(finalIdx + shift) % 12];
+            });
+            const melodyStr = convertedRaw.join(" ");
 
-            // 変換メロディ (度数ベースの厳密なマッピング)
+            // 色分けHTML
             const convertedHTML = degInputs.filter(v => v !== -1).map(v => {
                 const targetInterval = s.intervals[v % s.intervals.length];
-                if (targetInterval === null) {
-                    // スケール外の音（メジャーの度数にはあるが、その旋法にはない音）
-                    const chromatic = [0, 2, 4, 5, 7, 9, 11][v % 7];
-                    return `<span class="out-scale">${noteList[(chromatic + shift) % 12]}</span>`;
-                }
-                const noteName = noteList[(targetInterval + shift) % 12];
-                return `<span class="in-scale">${noteName}</span>`;
+                const finalIdx = targetInterval === null ? ([0, 2, 4, 5, 7, 9, 11][v % 7]) : targetInterval;
+                const noteName = noteList[(finalIdx + shift) % 12];
+                return `<span class="${targetInterval === null ? 'out-scale' : 'in-scale'}">${noteName}</span>`;
             }).join(" ");
 
-            const scaleNotes = validIntervals.map(i => noteList[(i + shift) % 12]).join(" ");
-            
-            // 3度構成順
-            let tertial = []; let temp = [...validIntervals]; let i = 0;
+            // グルーピング登録
+            if (melodyStr) {
+                if (!resultsMap[melodyStr]) resultsMap[melodyStr] = [];
+                resultsMap[melodyStr].push(s.id);
+            }
+
+            const validInts = s.intervals.filter(v => v !== null);
+            const scaleNotes = validInts.map(i => noteList[(i + shift) % 12]).join(" ");
+            let tertial = []; let temp = [...validInts]; let i = 0;
             while (temp.length > 0) { tertial.push(temp[i]); temp.splice(i, 1); if (temp.length > 0) i = (i + 1) % temp.length; }
             const chordNotes = tertial.map(i => noteList[(i + shift) % 12]).join(" ");
 
-            tbody.innerHTML += `<tr><td style="font-weight:bold;">${s.name}</td><td class="notes-text">${convertedHTML}</td><td class="notes-text">${scaleNotes}</td><td class="notes-text chord-notes">${chordNotes}</td><td><span style="font-size:0.75rem;">${s.img}</span></td></tr>`;
+            scaleCalculations.push({ s, convertedHTML, melodyStr, scaleNotes, chordNotes });
+        });
+
+        // 重複グループに記号を割り当て
+        const groupSymbols = {};
+        const symbols = "ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ";
+        let symbolIdx = 0;
+        Object.keys(resultsMap).forEach(key => {
+            if (resultsMap[key].length > 1 && key !== "") {
+                groupSymbols[key] = symbols[symbolIdx % symbols.length];
+                symbolIdx++;
+            }
+        });
+
+        // 描画
+        tbody.innerHTML = "";
+        scaleCalculations.forEach(item => {
+            const symbol = groupSymbols[item.melodyStr] || "";
+            const markHTML = symbol ? `<span class="group-mark">${symbol}</span>` : "";
+            tbody.innerHTML += `<tr>
+                <td style="font-weight:bold;">${item.s.name}</td>
+                <td class="notes-text">${markHTML}${item.convertedHTML}</td>
+                <td class="notes-text">${item.scaleNotes}</td>
+                <td class="notes-text chord-notes">${item.chordNotes}</td>
+                <td style="font-size:0.7rem;">${item.s.img}</td>
+            </tr>`;
         });
     }
 
-    function renameProject() {
-        const newName = prompt("名前変更:", currentProjectName);
-        if (newName && newName !== currentProjectName) {
-            allProjects[newName] = allProjects[currentProjectName]; delete allProjects[currentProjectName];
-            currentProjectName = newName; renderProjectList(); saveToLocal();
-        }
+    function createNewProject() {
+        const name = prompt("曲名:");
+        if (name && !allProjects[name]) { allProjects[name] = []; currentProjectName = name; renderProjectList(); switchProject(); saveToLocal(); }
     }
 
     function renderProjectList() {
@@ -222,9 +246,8 @@
     }
 
     window.onload = () => {
-        const saved = localStorage.getItem('sonataCompleteV2');
-        const last = localStorage.getItem('lastProjV1');
-        if (saved) { allProjects = JSON.parse(saved); if (last) currentProjectName = last; }
+        const saved = localStorage.getItem('sonataCompleteV3');
+        if (saved) allProjects = JSON.parse(saved);
         renderProjectList(); switchProject(); update();
     };
 </script>
