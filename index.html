@@ -1,4 +1,99 @@
-function update() {
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scale Matrix for Composers</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; line-height: 1.6; }
+        header { background: #1a1a1a; color: white; padding: 2rem; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; margin-top: 5px; }
+        main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+        .controls { display: flex; gap: 20px; background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); align-items: center; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        label { font-weight: bold; font-size: 0.9rem; }
+        select { padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        th { background: #333; color: white; padding: 15px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+        .notes { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #e63946; font-size: 1.1rem; white-space: nowrap; }
+        tr:hover { background-color: #f8f9fa; }
+        .num-cell { text-align: center; font-weight: bold; color: #666; }
+        @media (max-width: 600px) { .controls { flex-direction: column; align-items: flex-start; } .notes { font-size: 0.9rem; white-space: normal; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🎼 Scale Matrix</h1>
+    <div class="subtitle">ソナタ展開部のためのスケール算出ツール</div>
+</header>
+
+<main>
+    <div class="controls">
+        <div class="control-group">
+            <label for="keySelect">Root Key:</label>
+            <select id="keySelect" onchange="update()"></select>
+        </div>
+        <div class="subtitle">※Keyと旋法の性質に基づき異名同音（# / b）を自動調整します</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>音数</th>
+                <th>スケール名</th>
+                <th>構成音</th>
+                <th>イメージ・用途</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</main>
+
+<script>
+    const notesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const notesFlat  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+    
+    const scales = [
+        { n: 5, name: "琉球音階", intervals: [0, 4, 5, 7, 11], img: "南国的・太陽・開放的", prefer: "sharp" },
+        { n: 5, name: "律旋法", intervals: [0, 2, 5, 7, 9], img: "雅楽・静謐・感情抑制", prefer: "sharp" },
+        { n: 5, name: "陰旋法", intervals: [0, 1, 5, 7, 8], img: "和の哀愁・運命・夜", prefer: "flat" },
+        { n: 5, name: "中国音階", intervals: [0, 2, 4, 7, 9], img: "大陸的・悠久・安定", prefer: "sharp" },
+        { n: 5, name: "ジャバニーズ", intervals: [0, 1, 3, 7, 8], img: "幻覚的・熱帯・ガムラン", prefer: "flat" },
+        { n: 6, name: "全音音階", intervals: [0, 2, 4, 6, 8, 10], img: "夢幻・霧・方向喪失", prefer: "sharp" },
+        { n: 6, name: "神秘音階", intervals: [0, 2, 4, 6, 9, 10], img: "スクリャービン・法悦", prefer: "sharp" },
+        { n: 6, name: "ブルー・ノート", intervals: [0, 3, 5, 6, 7, 10], img: "野性味・本能・泥臭さ", prefer: "flat" },
+        { n: 7, name: "アイオニアン", intervals: [0, 2, 4, 5, 7, 9, 11], img: "長音階・現実・秩序", prefer: "sharp" },
+        { n: 7, name: "リディアン", intervals: [0, 2, 4, 6, 7, 9, 11], img: "神話的な光・浮遊", prefer: "sharp" },
+        { n: 7, name: "ミクソリディアン", intervals: [0, 2, 4, 5, 7, 9, 10], img: "祝祭・開放・土着的", prefer: "flat" },
+        { n: 7, name: "ドリアン", intervals: [0, 2, 3, 5, 7, 9, 10], img: "気高い悲劇・硬質", prefer: "flat" },
+        { n: 7, name: "エオリアン", intervals: [0, 2, 3, 5, 7, 8, 10], img: "喪失・孤独・沈殿", prefer: "flat" },
+        { n: 7, name: "フリジアン", intervals: [0, 1, 3, 5, 7, 8, 10], img: "宿命・地下・情念", prefer: "flat" },
+        { n: 7, name: "ロクリアン", intervals: [0, 1, 3, 5, 6, 8, 10], img: "崩壊・死・トニック消失", prefer: "flat" },
+        { n: 7, name: "フリジアン・Dom", intervals: [0, 1, 4, 5, 7, 8, 10], img: "エジプト・砂漠・威圧", prefer: "flat" },
+        { n: 7, name: "ダブル・ハーモニック", intervals: [0, 1, 4, 5, 7, 8, 11], img: "宗教儀式・強い重力", prefer: "flat" },
+        { n: 7, name: "ハンガリー短音階", intervals: [0, 2, 3, 6, 7, 8, 11], img: "情念・狂気・ジプシー風", prefer: "sharp" },
+        { n: 7, name: "リディアン・Aug", intervals: [0, 2, 4, 6, 8, 9, 11], img: "宇宙的・時空の歪み", prefer: "sharp" },
+        { n: 7, name: "リディアン・Dom", intervals: [0, 2, 4, 6, 7, 9, 10], img: "生命力・モダンな輝き", prefer: "flat" },
+        { n: 7, name: "ウルトラ・ロクリアン", intervals: [0, 1, 3, 4, 6, 8, 9], img: "極限の暗黒・深淵", prefer: "flat" },
+        { n: 8, name: "メシアン第2旋法", intervals: [0, 1, 3, 4, 6, 7, 9, 10], img: "宝石・神秘・不安", prefer: "flat" },
+        { n: 9, name: "メシアン第3旋法", intervals: [0, 2, 3, 4, 6, 7, 8, 10, 11], img: "極彩色・光の爆発", prefer: "sharp" },
+        { n: 10, name: "メシアン第7旋法", intervals: [0, 1, 2, 3, 5, 6, 7, 8, 9, 11], img: "カオス・飽和", prefer: "sharp" },
+        { n: 11, name: "11音旋法", intervals: [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11], img: "極限の飽和・緊張", prefer: "sharp" },
+        { n: "螺旋", name: "螺旋音階(13周期)", intervals: [0, 2, 4, 6, 8, 10, 13, 15, 17, 19, 21, 23, 26], img: "無限上昇・非循環", prefer: "sharp" }
+    ];
+
+    const keySelect = document.getElementById('keySelect');
+    notesFlat.forEach((n, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = n;
+        keySelect.appendChild(opt);
+    });
+
+    function update() {
         const shift = parseInt(keySelect.value);
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
@@ -10,10 +105,10 @@ function update() {
             const useFlat = (s.prefer === "flat") || (isFlatKey && s.prefer !== "sharp");
             const noteList = useFlat ? notesFlat : notesSharp;
 
-            // ⁺ (オクターブ記号) を付けないように修正
             const notes = s.intervals.map(i => {
                 const idx = (i + shift) % 12;
-                return noteList[idx]; // ここからオクターブ計算を削除
+                // オクターブ記号（⁺）を削除
+                return noteList[idx];
             }).join(" ");
 
             tbody.innerHTML += `<tr>
@@ -24,3 +119,8 @@ function update() {
             </tr>`;
         });
     }
+
+    update();
+</script>
+</body>
+</html>
