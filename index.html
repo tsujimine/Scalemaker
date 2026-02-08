@@ -1,114 +1,19 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scale Matrix for Composers</title>
-    <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; line-height: 1.6; }
-        header { background: #1a1a1a; color: white; padding: 2rem; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; }
-        .subtitle { font-size: 0.9rem; opacity: 0.8; margin-top: 5px; }
-        main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
-        .controls { display: flex; gap: 20px; background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); align-items: center; }
-        .control-group { display: flex; align-items: center; gap: 10px; }
-        label { font-weight: bold; font-size: 0.9rem; }
-        select { padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        th { background: #333; color: white; padding: 15px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
-        .notes { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #e63946; font-size: 1.1rem; white-space: nowrap; }
-        tr:hover { background-color: #f8f9fa; }
-        .num-cell { text-align: center; font-weight: bold; color: #666; }
-        @media (max-width: 600px) { .controls { flex-direction: column; align-items: flex-start; } .notes { font-size: 0.9rem; white-space: normal; } }
-    </style>
-</head>
-<body>
-
-<header>
-    <h1>🎼 Scale Matrix</h1>
-    <div class="subtitle">ソナタ展開部のためのスケール算出ツール</div>
-</header>
-
-<main>
-    <div class="controls">
-        <div class="control-group">
-            <label for="keySelect">Root Key:</label>
-            <select id="keySelect" onchange="update()"></select>
-        </div>
-        <div class="subtitle">※Keyと旋法の性質に基づき異名同音（# / b）を自動調整します</div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>音数</th>
-                <th>スケール名</th>
-                <th>構成音</th>
-                <th>イメージ・用途</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
-</main>
-
-<script>
-    // 異名同音対応の音名定義
-    const notesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const notesFlat  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-    
-    // スケールデータに 'prefer' (表記の好み) を追加
-    const scales = [
-        { n: 5, name: "琉球音階", intervals: [0, 4, 5, 7, 11], img: "南国的・太陽", prefer: "sharp" },
-        { n: 5, name: "律旋法", intervals: [0, 2, 5, 7, 9], img: "雅楽・静謐", prefer: "sharp" },
-        { n: 5, name: "陰旋法", intervals: [0, 1, 5, 7, 8], img: "和の哀愁・運命", prefer: "flat" },
-        { n: 5, name: "ジャバニーズ", intervals: [0, 1, 3, 7, 8], img: "熱帯・ガムラン風", prefer: "flat" },
-        { n: 6, name: "全音音階", intervals: [0, 2, 4, 6, 8, 10], img: "夢幻・方向喪失", prefer: "sharp" },
-        { n: 6, name: "神秘音階", intervals: [0, 2, 4, 6, 9, 10], img: "スクリャービン・法悦", prefer: "sharp" },
-        { n: 7, name: "アイオニアン", intervals: [0, 2, 4, 5, 7, 9, 11], img: "長音階・現実", prefer: "sharp" },
-        { n: 7, name: "リディアン", intervals: [0, 2, 4, 6, 7, 9, 11], img: "神話的光 (#4)", prefer: "sharp" },
-        { n: 7, name: "ミクソリディアン", intervals: [0, 2, 4, 5, 7, 9, 10], img: "祝祭・開放 (b7)", prefer: "flat" },
-        { n: 7, name: "ドリアン", intervals: [0, 2, 3, 5, 7, 9, 10], img: "気高い哀愁", prefer: "flat" },
-        { n: 7, name: "エオリアン", intervals: [0, 2, 3, 5, 7, 8, 10], img: "喪失・短音階", prefer: "flat" },
-        { n: 7, name: "フリジアン", intervals: [0, 1, 3, 5, 7, 8, 10], img: "宿命・地下 (b2)", prefer: "flat" },
-        { n: 7, name: "ロクリアン", intervals: [0, 1, 3, 5, 6, 8, 10], img: "崩壊・死 (b2/b5)", prefer: "flat" },
-        { n: 7, name: "フリジアン・Dom", intervals: [0, 1, 4, 5, 7, 8, 10], img: "エジプト・砂漠", prefer: "flat" },
-        { n: 7, name: "ハンガリー短音階", intervals: [0, 2, 3, 6, 7, 8, 11], img: "情念・狂気 (#4)", prefer: "sharp" },
-        { n: 7, name: "リディアン・Aug", intervals: [0, 2, 4, 6, 8, 9, 11], img: "時空の歪み (#4/#5)", prefer: "sharp" },
-        { n: 8, name: "メシアン第2旋法", intervals: [0, 1, 3, 4, 6, 7, 9, 10], img: "宝石・神秘・不安", prefer: "flat" },
-        { n: 10, name: "メシアン第7旋法", intervals: [0, 1, 2, 3, 5, 6, 7, 8, 9, 11], img: "カオス・飽和", prefer: "sharp" },
-        { n: "螺旋", name: "螺旋音階(13周期)", intervals: [0, 2, 4, 6, 8, 10, 13, 15, 17, 19], img: "無限上昇", prefer: "sharp" }
-    ];
-
-    const keySelect = document.getElementById('keySelect');
-    // Keyの選択肢は基本フラット表記で生成（F, Bb, Eb, Ab等に対応しやすいため）
-    notesFlat.forEach((n, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = n;
-        keySelect.appendChild(opt);
-    });
-
-    function update() {
+function update() {
         const shift = parseInt(keySelect.value);
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
         
-        // Root Key 自体がシャープ系かフラット系かを簡易判定
-        // C, D, E, G, A, B はシャープ、Db, Eb, F, Ab, Bb はフラット優先のリストを想定
         const flatKeys = [1, 3, 5, 8, 10]; // Db, Eb, F, Ab, Bb
         const isFlatKey = flatKeys.includes(shift);
 
         scales.forEach(s => {
-            // スケール自体の好み(prefer)と、Keyの性質(isFlatKey)を組み合わせて表記を決定
-            // 基本はスケールの性質を優先するが、Keyがフラット系ならフラットに寄せる
             const useFlat = (s.prefer === "flat") || (isFlatKey && s.prefer !== "sharp");
             const noteList = useFlat ? notesFlat : notesSharp;
 
+            // ⁺ (オクターブ記号) を付けないように修正
             const notes = s.intervals.map(i => {
                 const idx = (i + shift) % 12;
-                const oct = Math.floor((i + shift) / 12);
-                return noteList[idx] + (oct > 0 ? "⁺".repeat(oct) : "");
+                return noteList[idx]; // ここからオクターブ計算を削除
             }).join(" ");
 
             tbody.innerHTML += `<tr>
@@ -119,8 +24,3 @@
             </tr>`;
         });
     }
-
-    update();
-</script>
-</body>
-</html>
